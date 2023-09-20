@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class DB {
-    //массивы для основных типов данных (дата пока не предусмотрена)
+    //массивы для некоторых типов данных
     final String[] charTypes = {"character varying", "text", "varchar"};
     final String[] intTypes = {"integer", "int4"};
     final String longType = "bigint";
@@ -16,15 +16,16 @@ public class DB {
     final String dateType = "date";
     final String boolType = "boolean";
 
-    //данные для подключения
+    //данные для подключения; все устанавливаются при входе в БД.
     private String HOST;
     private String PORT;
     private String DB_NAME;
-    private String LOGIN; // логин; устанавливается при вводе;
-    private String PASS;// пароль; устанавливается при вводе;
+    private String LOGIN;
+    private String PASS;
 
-    //Нужно для тестирования, поскольку к серверам MySQL НРТК невозможно подключиться извне.
-    //Если нет подключения к НРТК, следует использовать localhost и порт на локальном управлении БД.
+    //Нужно было для тестирования дома.
+    //Пусть останется; этот метод отвечает за подключение к базе данных
+    //по IP адресу, порту, логину и паролю.
 
     public void DB_init(String HOST, String PORT, String DB_NAME, String LOGIN, String PASS) throws SQLException, ClassNotFoundException {
         this.HOST = HOST;
@@ -51,9 +52,8 @@ public class DB {
     }
 
     /*
-     *
-     * Получает столбцы из выбранной таблицы и записывает их в указанный в качестве аргумента массив.
-     *
+     * Получаем столбцы из выбранной таблицы и записываем их в указанный в качестве аргумента массив.
+     * Нужно для ввода данных в таблицу в соответствии со столбцами
      * */
     public void getColumns(String tableName, ArrayList<Column> cols) throws SQLException, ClassNotFoundException {
         String sql = "SELECT * FROM "+tableName;
@@ -66,7 +66,7 @@ public class DB {
         //получаем количество столбцов таблицы
         int columnCount = metaData.getColumnCount();
 
-        //
+        //добавляем столбцы в массив столбцов, которые затем должны пойти в объект класса таблица
         for (int i = 1; i <= columnCount; i++) {
             String columnName = metaData.getColumnName(i);
             String columnType = metaData.getColumnTypeName(i);
@@ -74,7 +74,7 @@ public class DB {
         }
     }
 
-    //Полностью переработан метод, чтобы обеспечить универсальность ввода.
+    //Сам ввод данных в таблицу.
     //Сканнер нужен, чтобы вводить данные; Объект класса Table - для универсальности
     public void insertTask(Table table, Scanner scanner) throws SQLException, ClassNotFoundException {
         String sql = "INSERT INTO "+table.name+" (";
@@ -108,6 +108,7 @@ public class DB {
         Statement statement = conn.createStatement();
         ResultSet res = statement.executeQuery(sql);
         //если есть свободные номера, то возвращаем этот самый номер
+        //отсчёт здесь почему-то начинается с нуля.
         if(res.next())
         {
             int maxID = res.getInt(1);
@@ -119,9 +120,14 @@ public class DB {
 
     //заполнение таблицы в соответствии с типом данных
     void runFill(PreparedStatement prSt, int index, Column col, Scanner scanner) throws IllegalArgumentException, SQLException {
+        //булево значение, нужно нам, чтобы проверить, добавлено ли значение (проверка нужна лишь
+        // когда возможных названий типа данных больше, чем одно)
         boolean isAdded = false;
+        //возможных названий больше чем одно
         for (int i = 0; i < charTypes.length; i++)
         {
+            //если нашлось совпадение, записываем значение "истина" в булево поле и записываем с клавиатуры
+            //строку в таблицу.
             if (col.getType().equalsIgnoreCase(charTypes[i]))
             {
                 System.out.println("Введите строку для столбца "+col.getName()+": ");
@@ -133,6 +139,8 @@ public class DB {
         }
         for (int i = 0; i < intTypes.length; i++)
         {
+            //если нашлось совпадение, записываем значение "истина" в булево поле и записываем с клавиатуры
+            //32-разрядное целое число в таблицу.
             if (col.getType().equalsIgnoreCase(intTypes[i]))
             {
                 System.out.println("Введите целое число для столбца "+col.getName()+": ");
@@ -142,6 +150,7 @@ public class DB {
             if (isAdded)
                 return;
         }
+        //дальше всё просто - если нашёлся тип данных, записываем данные с клавиатуры в таблицу
         if (col.getType().equalsIgnoreCase(longType))
         {
             System.out.println("Введите целое число для столбца "+col.getName()+": ");
@@ -183,6 +192,10 @@ public class DB {
         }
     }
 
+    /*
+    * Вывод таблицы на экран консоли.
+    * Пока что столбцы разделяются табуляцией.
+    * */
     public void outputEverythingTask(Table table, String sortby) throws SQLException, ClassNotFoundException {
         //Запрос
         String sql = "SELECT * FROM "+table.name+" ORDER BY "+sortby;
@@ -222,36 +235,4 @@ public class DB {
             System.out.println();
         }
     }
-
-    /*
-
-    ЗАКОММЕНЧЕНО НА ВСЯКИЙ СЛУЧАЙ
-
-    //Отрывок от кода, выпущенного 20.09.2023 20:41 МСК
-
-    public void insertTask(int ID, String ISBN, String title, String author, String publisher, int publishYear, String genre, String language, int pagesAmount) throws SQLException, ClassNotFoundException {
-        //ISBN - переменная типа long а не int потому, что длина ISBN составляет 13 цифр,
-        // в то время, как int поддерживает числа до 2,147,483,647 (без запятых вышла бы каша), что намного меньше
-        // чем, например, 9,785,845,916,549 (в формате ISBN - 978-5-8459-1654-9).
-
-        // вернёмся к нашей программе; эта строка - заготовка к команде, с помощью которой мы вставим нужные данные.
-        String sql = "INSERT INTO book (idBook, ISBN, title, author, publisher, publishYear, genre, language, pagesAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        // Тут темно и страшно; команда редактируется, чтобы вместо знаков вопроса были нормальные значения
-        PreparedStatement prSt = getDbConn().prepareStatement(sql);
-        prSt.setInt(1, ID);
-        prSt.setString(2, ISBN);
-        prSt.setString(3, title);
-        prSt.setString(4, author);
-        prSt.setString(5, publisher);
-        prSt.setInt(6, publishYear);
-        prSt.setString(7, genre);
-        prSt.setString(8, language);
-        prSt.setInt(9, pagesAmount);
-
-        //Команда запускается; момент истины, если всё пройдёт без проблем - труд проделан не зря и можно выдохнуть.
-        //Если не сработает, где-то возможно допущена ошибка.
-        prSt.executeUpdate();
-
-    }*/
 }

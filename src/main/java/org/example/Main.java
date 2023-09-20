@@ -9,9 +9,11 @@ public class Main {
     public static void main(String[] args) throws SQLException, ClassNotFoundException {
         //Сканнер для ввода выбора
         Scanner in = new Scanner(System.in);
-        System.out.println("Введите 0 для локального запуска от имени пользователя postgres");
-        int choice = in.nextInt();
+        //нужно было для теста программы у себя дома.
+        //System.out.println("Введите 0 для локального запуска от имени пользователя postgres");
+        //int choice = in.nextInt();
         DB db = new DB();
+        /*
         if (choice == 0)
         {
             db.DB_init("127.0.0.1","5432","books","postgres","postgres");
@@ -20,6 +22,7 @@ public class Main {
         }
         else
         {
+        */
             String host, port, db_name, login, password;
             System.out.printf("host: ");
             host = in.next();
@@ -37,7 +40,7 @@ public class Main {
             password = in.next();
             System.out.println();
             db.DB_init(host,port,db_name,login,password);
-        }
+        //}
 
         //массив
         ArrayList<Column> cols = new ArrayList<>();
@@ -49,11 +52,6 @@ public class Main {
         db.getColumns(tableName, cols);
 
         Table table = new Table(tableName, cols);
-
-        for (Column col: table.cols)
-        {
-            System.out.println(col.getType());
-        }
 
         //ввод в таблицу
         db.insertTask(table,in);
